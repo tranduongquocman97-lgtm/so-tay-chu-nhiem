@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Sổ Tay Chủ Nhiệm Điện Tử 10A12 - THPT số 1 Quang Trung</title>
+  
+  <!-- Tailwind CSS, FontAwesome & SheetJS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  
+  <!-- PWA Cấu hình & Biểu tượng -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b1120">
+  <link rel="apple-touch-icon" href="app_icon_gvcn.png">
+
+  <style>
+    body { 
+      background-color: #0b1120; 
+      color: #f8fafc; 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+    }
+    .glass-card { 
+      background: rgba(15, 23, 42, 0.88); 
+      backdrop-filter: blur(14px); 
+      border: 1px solid rgba(255, 255, 255, 0.08); 
+    }
+    .nav-active { 
+      background: linear-gradient(135deg, #0284c7, #2563eb); 
+      color: #ffffff; 
+      box-shadow: 0 4px 15px rgba(2, 132, 199, 0.35); 
+    }
+    input, select, textarea { font-size: 16px !important; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    select option {
+      background-color: #0f172a !important;
+      color: #f8fafc !important;
+      padding: 8px 12px;
+    }
+
+    .seat-cell { transition: all 0.2s ease; }
+    .seat-cell.selected-seat {
+      border: 2px solid #38bdf8 !important;
+      background: rgba(56, 189, 248, 0.2) !important;
+    }
+
+    /* Tự động thu gọn không gian khi xoay ngang trên điện thoại */
+    @media (orientation: landscape) and (max-height: 520px) {
+      header { padding-top: 4px !important; padding-bottom: 4px !important; }
+      header .w-10 { width: 1.75rem !important; height: 1.75rem !important; font-size: 0.75rem !important; }
+      section:has(#liveBannerTitle) { display: none; }
+      main { margin-top: 4px !important; }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-sky-500 selection:text-white pb-24 lg:pb-8">
+
+  <!-- ==================== MÀN HÌNH ĐĂNG NHẬP (AUTH MODAL TOÀN MÀN HÌNH) ==================== -->
+  <div id="authScreen" class="fixed inset-0 z-50 bg-[#0b1120]/95 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="glass-card max-w-md w-full p-6 sm:p-8 rounded-3xl border border-white/15 shadow-2xl space-y-5 text-center">
+      <div class="inline-flex w-16 h-16 rounded-2xl bg-gradient-to-tr from-sky-500 via-indigo-600 to-blue-700 items-center justify-center font-black text-white text-2xl shadow-xl shadow-sky-500/30 border border-white/20 mx-auto">
+        10
+      </div>
+      <div>
+        <h2 class="text-xl sm:text-2xl font-black text-white tracking-wide uppercase">LỚP 10A12 (K58-QT)</h2>
+        <p class="text-xs text-slate-400 mt-1">Sổ Tay Chủ Nhiệm & Trung Tâm Điều Hành Điện Tử</p>
+      </div>
+
+      <!-- Lựa chọn tài khoản nhanh cho thiết bị cá nhân -->
+      <div class="flex items-center justify-center gap-1.5 p-1 rounded-xl bg-white/5 border border-white/10 text-xs">
+        <button type="button" onclick="setQuickLogin('gvcn')" class="px-2.5 py-1 rounded-lg text-slate-300 hover:text-white font-bold transition">GVCN</button>
+        <button type="button" onclick="setQuickLogin('HS01')" class="px-2.5 py-1 rounded-lg text-slate-300 hover:text-white font-bold transition">Lớp trưởng</button>
+        <button type="button" onclick="setQuickLogin('HS22')" class="px-2.5 py-1 rounded-lg text-slate-300 hover:text-white font-bold transition">Thủ quỹ</button>
+        <button type="button" onclick="setQuickLogin('HS04')" class="px-2.5 py-1 rounded-lg text-slate-300 hover:text-white font-bold transition">Học sinh</button>
+      </div>
+
+      <form onsubmit="handleUserLogin(event)" class="space-y-3.5 text-left">
+        <div>
+          <label class="text-[11px] font-bold text-slate-300 uppercase block mb-1">Tài khoản / Mã định danh:</label>
+          <div class="relative">
+            <i class="fa-solid fa-user absolute left-3.5 top-3.5 text-slate-400 text-xs"></i>
+            <input 
+              type="text" 
+              id="authUsernameInput" 
+              placeholder="VD: gvcn, HS01, HS22..." 
+              required
+              class="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
+            >
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[11px] font-bold text-slate-300 uppercase block mb-1">Mật khẩu:</label>
+          <div class="relative">
+            <i class="fa-solid fa-lock absolute left-3.5 top-3.5 text-slate-400 text-xs"></i>
+            <input 
+              type="password" 
+              id="authPasswordInput" 
+              placeholder="Nhập mật khẩu..." 
+              required
+              class="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            >
+          </div>
+        </div>
+
+        <div id="loginErrorMsg" class="hidden p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-semibold text-center"></div>
+
+        <button 
+          type="submit" 
+          id="btnSubmitLogin"
+          class="w-full py-3 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-sky-500/30 transition active:scale-98 flex items-center justify-center gap-2"
+        >
+          <i class="fa-solid fa-right-to-bracket"></i>
+          <span>Đăng Nhập Vào Lớp</span>
+        </button>
+      </form>
+
+      <div class="pt-2 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
+        <a href="tracuu.html" class="text-sky-400 hover:underline"><i class="fa-solid fa-magnifying-glass mr-1"></i>Cổng tra cứu PH</a>
+        <span>Phiên bản 10.0 (RBAC)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOP BAR: THÔNG TIN LỚP & TRẠNG THÁI TÀI KHOẢN -->
+  <header class="sticky top-0 z-40 glass-card border-b border-white/10 px-3 sm:px-6 py-2.5 flex items-center justify-between">
+    <div class="flex items-center gap-2.5 sm:gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 via-indigo-600 to-blue-700 flex items-center justify-center font-black text-white text-lg shadow-lg shadow-sky-500/20 border border-white/15">
+        10
+      </div>
+      <div>
+        <div class="flex items-center gap-1.5 sm:gap-2">
+          <h1 class="text-sm sm:text-lg font-black tracking-wide text-white">Lớp 10A12</h1>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30">K58-QT</span>
+        </div>
+        <p class="text-[10px] sm:text-[11px] text-slate-400">THPT số 1 Quang Trung (Phân hiệu)</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-1.5 sm:gap-2">
+      <button onclick="copyParentLookupPortalLink()" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 hover:bg-emerald-500/30 text-xs font-bold transition shadow-sm active:scale-95" title="Sao chép link kèm mẫu tin nhắn gửi nhóm Zalo">
+        <i class="fa-solid fa-share-nodes"></i>
+        <span class="hidden md:inline">Sao chép Cổng Tra Cứu</span>
+      </button>
+
+      <!-- Công tắc mở quyền ghi của GVCN -->
+      <button onclick="toggleMasterEditSwitch()" id="btnMasterSwitch" class="hidden items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white text-xs font-semibold" title="Bật/Tắt quyền Ban cán sự ghi nề nếp">
+        <i class="fa-solid fa-toggle-on text-emerald-400 text-sm"></i>
+        <span class="hidden lg:inline">Cán sự: Mở ghi</span>
+      </button>
+
+      <!-- Badge người dùng đăng nhập & Đăng xuất -->
+      <div class="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs font-semibold text-slate-300">
+        <i class="fa-solid fa-circle-user text-sky-400"></i>
+        <div class="leading-tight text-left">
+          <span id="currentUserNameText" class="font-bold text-white block truncate max-w-[110px] sm:max-w-[150px]">Khách</span>
+          <span id="currentUserRoleBadge" class="text-[9px] text-sky-300 block">Chưa xác thực</span>
+        </div>
+        <button onclick="handleUserLogout()" class="ml-1 text-[11px] text-rose-400 hover:underline font-bold" title="Đăng xuất khỏi phiên">Thoát</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- BANNER THỜI GIAN THỰC -->
+  <section class="max-w-7xl w-full mx-auto px-3 sm:px-4 mt-2.5">
+    <div class="glass-card rounded-2xl p-3 sm:p-4 border border-sky-500/20 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div class="space-y-1">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-[10px] font-black tracking-wider uppercase text-sky-400" id="liveBannerSub">ĐANG XÁC ĐỊNH CA HỌC...</span>
+        </div>
+        <h2 class="text-xs sm:text-sm font-black text-white" id="liveBannerTitle">Kiểm tra lịch học theo thời khóa biểu...</h2>
+        <div class="flex items-center gap-2 text-[11px] text-slate-400">
+          <span>Tổ trực nhật: <b class="text-amber-300 font-bold" id="liveDutyTeam">Đang tải</b></span>
+          <span>•</span>
+          <span id="currentPeriodLabel">Đang ngoài giờ tiết học</span>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div class="w-full sm:w-48 space-y-1">
+          <div class="flex justify-between text-[10px] font-bold text-slate-400">
+            <span>Tiến độ tiết</span>
+            <span id="periodTimeRemaining">0%</span>
+          </div>
+          <div class="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+            <div id="periodProgressBar" class="h-full bg-gradient-to-r from-sky-500 to-emerald-400 transition-all duration-500" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div class="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-right shrink-0">
+          <span class="text-[9px] uppercase font-bold text-slate-400 block">Thời gian thực</span>
+          <span class="text-xs sm:text-sm font-mono font-black text-sky-300" id="digitalClockText">--:--:--</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- THANH ĐIỀU HƯỚNG CÁC PHÂN HỆ -->
+  <nav class="max-w-7xl w-full mx-auto px-3 sm:px-4 mt-2.5">
+    <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1" id="mainNavContainer">
+      <button onclick="switchTab('tab-tong-quan')" id="btn-tab-tong-quan" class="nav-btn nav-active flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition">
+        <i class="fa-solid fa-gauge-high"></i> Tổng quan
+      </button>
+      <button onclick="switchTab('tab-thi-dua')" id="btn-tab-thi-dua" class="nav-btn flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap text-slate-400 hover:text-white hover:bg-white/5 transition">
+        <i class="fa-solid fa-trophy"></i> Thi đua & Nề nếp
+      </button>
+      <button onclick="switchTab('tab-so-do-lop')" id="btn-tab-so-do-lop" class="nav-btn flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap text-slate-400 hover:text-white hover:bg-white/5 transition">
+        <i class="fa-solid fa-table-cells-large"></i> Sơ đồ lớp (4 Dãy)
+      </button>
+      <button onclick="switchTab('tab-lao-dong')" id="btn-tab-lao-dong" class="nav-btn flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap text-slate-400 hover:text-white hover:bg-white/5 transition">
+        <i class="fa-solid fa-broom"></i> Lao động & Trực nhật
+      </button>
+      <button onclick="switchTab('tab-so-dau-bai')" id="btn-tab-so-dau-bai" class="nav-btn flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap text-slate-400 hover:text-white hover:bg-white/5 transition">
+        <i class="fa-solid fa-book-bookmark"></i> Sổ đầu bài
+      </button>
+      <button onclick="switchTab('tab-quy-lop')" id="btn-tab-quy-lop" class="nav-btn flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap text-slate-400 hover:text-white hover:bg-white/5 transition">
+        <i class="fa-solid fa-vault"></i> Quản lý Quỹ lớp
+      </button>
+      <button onclick="switchTab('tab-danh-sach')" id="btn-tab-danh-sach" class="nav-btn flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap text-slate-400 hover:text-white hover:bg-white/5 transition">
+        <i class="fa-solid fa-address-book"></i> Danh sách lớp (45 HS)
+      </button>
+      <button onclick="switchTab('tab-ca-nhan')" id="btn-tab-ca-nhan" class="nav-btn hidden flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap text-amber-300 hover:text-white hover:bg-white/5 transition">
+        <i class="fa-solid fa-user-graduate"></i> Góc Học Sinh
+      </button>
+    </div>
+  </nav>
+
+  <!-- NỘI DUNG TỪNG PHÂN HỆ -->
+  <main class="max-w-7xl w-full mx-auto px-3 sm:px-4 mt-2.5 flex-1">
+
+    <!-- ==================== TAB CÁ NHÂN HỌC SINH (CHẾ ĐỘ HỌC SINH) ==================== -->
+    <section id="tab-ca-nhan" class="tab-pane hidden space-y-4">
+      <div class="glass-card p-5 sm:p-6 rounded-3xl border-l-4 border-amber-400 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+          <div>
+            <h2 class="text-lg sm:text-xl font-black text-white flex items-center gap-2" id="studentPortalName">Học sinh 10A12</h2>
+            <p class="text-xs text-slate-400 mt-0.5" id="studentPortalSub">Mã HS: -- • Tổ -- • Chức vụ: Thành viên</p>
+          </div>
+          <div class="text-left sm:text-right">
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">Điểm rèn luyện tuần</span>
+            <span class="text-3xl font-black text-emerald-400" id="studentPortalScore">100đ</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-2">
+            <h3 class="text-xs font-bold text-sky-400 uppercase flex items-center gap-1.5"><i class="fa-solid fa-chair"></i> Vị trí chỗ ngồi</h3>
+            <p class="text-sm font-black text-white" id="studentPortalSeat">Đang tải...</p>
+            <p class="text-[11px] text-slate-400">Xem trực quan tại Sơ đồ lớp 4 dãy</p>
+          </div>
+          <div class="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-2">
+            <h3 class="text-xs font-bold text-amber-400 uppercase flex items-center gap-1.5"><i class="fa-solid fa-broom"></i> Ca trực nhật tổ</h3>
+            <p class="text-sm font-black text-white" id="studentPortalLabor">Theo phân công của Tổ</p>
+            <p class="text-[11px] text-emerald-400 font-semibold" id="studentPortalLaborStatus"><i class="fa-solid fa-circle-check mr-1"></i>Không nợ ca phạt</p>
+          </div>
+          <div class="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-2">
+            <h3 class="text-xs font-bold text-emerald-400 uppercase flex items-center gap-1.5"><i class="fa-solid fa-vault"></i> Tình trạng Quỹ lớp</h3>
+            <p class="text-sm font-black text-white" id="studentPortalFund">Đã hoàn thành</p>
+            <p class="text-[11px] text-slate-400">Quỹ hoạt động tập thể 10A12</p>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-white/5 border border-white/5">
+          <h3 class="text-xs font-bold text-white uppercase mb-2 flex items-center gap-1.5"><i class="fa-solid fa-clock-rotate-left text-sky-400"></i> Nhật ký nề nếp cá nhân tuần này</h3>
+          <div class="space-y-1.5 text-xs" id="studentPortalViolations">
+            <p class="text-slate-400 italic">Tuần này bạn chưa có ghi nhận trừ điểm nào. Hãy tiếp tục phát huy!</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 1. TAB TỔNG QUAN ==================== -->
+    <section id="tab-tong-quan" class="tab-pane space-y-3 sm:space-y-4">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+        <div class="glass-card p-3.5 sm:p-4 rounded-2xl border-l-4 border-sky-500">
+          <p class="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase">Sĩ số lớp 10A12</p>
+          <p class="text-xl sm:text-2xl font-black text-white mt-1">45 / 45</p>
+          <span class="text-[10px] text-emerald-400 font-semibold"><i class="fa-solid fa-shield-heart mr-1"></i>100% hiện diện</span>
+        </div>
+        <div class="glass-card p-3.5 sm:p-4 rounded-2xl border-l-4 border-emerald-500">
+          <p class="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase">Điểm thi đua TB</p>
+          <p class="text-xl sm:text-2xl font-black text-emerald-400 mt-1" id="dashAvgScore">98.5đ</p>
+          <span class="text-[10px] text-slate-400 font-medium">Hạng 1 Khối 10 (K58)</span>
+        </div>
+        <div class="glass-card p-3.5 sm:p-4 rounded-2xl border-l-4 border-amber-500">
+          <p class="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase">Trực nhật hôm nay</p>
+          <p class="text-base sm:text-lg font-black text-amber-300 mt-1 truncate" id="dashLaborToday">Sáng T4 - Tổ 1</p>
+          <span class="text-[10px] text-amber-400/80 font-medium">Ban Cán sự Lao động</span>
+        </div>
+        <div class="glass-card p-3.5 sm:p-4 rounded-2xl border-l-4 border-indigo-500">
+          <p class="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase">Tồn quỹ khả dụng</p>
+          <p class="text-xl sm:text-2xl font-black text-indigo-300 mt-1" id="dashFundBalance">0 đ</p>
+          <span class="text-[10px] text-slate-400 font-medium">Thủ quỹ lớp</span>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-4 sm:p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-white/10">
+          <div>
+            <h2 class="text-sm sm:text-base font-black text-white flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-sky-400"></i>
+              Nhật Ký Chuyên Cần & Thi Đua Nề Nếp Tuần
+            </h2>
+            <p class="text-[11px] text-slate-400">Ghi nhận theo từng buổi học • Đầy đủ cả ca có phép để nắm sĩ số</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="refreshData()" class="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition flex items-center gap-1.5">
+              <i class="fa-solid fa-rotate-right"></i> Làm mới
+            </button>
+            <button onclick="exportWeeklyShlReport()" class="px-2.5 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 text-xs font-bold hover:bg-indigo-500/30 transition flex items-center gap-1.5">
+              <i class="fa-solid fa-file-invoice"></i> Biên bản SHL
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto mt-3">
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr class="text-slate-400 border-b border-white/10 text-[11px]">
+                <th class="py-2.5 px-3 font-semibold">BUỔI HỌC</th>
+                <th class="py-2.5 px-3 font-semibold">HỌC SINH</th>
+                <th class="py-2.5 px-3 font-semibold">TỔ</th>
+                <th class="py-2.5 px-3 font-semibold">NỘI DUNG</th>
+                <th class="py-2.5 px-3 font-semibold text-center">ĐIỂM</th>
+                <th class="py-2.5 px-3 font-semibold">NGƯỜI GHI</th>
+                <th class="py-2.5 px-3 font-semibold text-right">THAO TÁC</th>
+              </tr>
+            </thead>
+            <tbody id="violationTableBody" class="divide-y divide-white/5">
+              <tr>
+                <td colspan="7" class="py-6 text-center text-slate-500 italic">Đang tải nhật ký nề nếp...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 2. TAB THI ĐUA & NỀ NẾP ==================== -->
+    <section id="tab-thi-dua" class="tab-pane hidden space-y-3 sm:space-y-4">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div class="lg:col-span-2 glass-card rounded-2xl p-4 sm:p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm sm:text-base font-black text-white flex items-center gap-2">
+              <i class="fa-solid fa-clipboard-user text-emerald-400"></i>
+              Điểm Danh Chuyên Cần 7 Ca Học
+            </h2>
+            <button onclick="openRecordViolationModal()" id="btnOpenViolationModal" class="px-2.5 py-1.5 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-400/30 text-xs font-bold hover:bg-sky-500/30">
+              <i class="fa-solid fa-plus mr-1"></i> Chấm chéo vi phạm
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+            <button onclick="selectAttendanceSession('T2_SANG', 'Sáng Thứ 2')" class="att-btn px-2.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-left border border-white/10">Sáng Thứ 2</button>
+            <button onclick="selectAttendanceSession('T2_CHIEU', 'Chiều Thứ 2')" class="att-btn px-2.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-left border border-white/10">Chiều Thứ 2</button>
+            <button onclick="selectAttendanceSession('T3_SANG', 'Sáng Thứ 3')" class="att-btn px-2.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-left border border-white/10">Sáng Thứ 3</button>
+            <button onclick="selectAttendanceSession('T3_CHIEU', 'Chiều Thứ 3')" class="att-btn px-2.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-left border border-white/10">Chiều Thứ 3</button>
+            <button onclick="selectAttendanceSession('T4_SANG', 'Sáng Thứ 4')" class="att-btn px-2.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-left border border-white/10">Sáng Thứ 4</button>
+            <button onclick="selectAttendanceSession('T5_SANG', 'Sáng Thứ 5')" class="att-btn px-2.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-left border border-white/10">Sáng Thứ 5</button>
+            <button onclick="selectAttendanceSession('T6_SANG', 'Sáng Thứ 6')" class="att-btn px-2.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-left border border-white/10">Sáng Thứ 6</button>
+          </div>
+
+          <div class="p-2.5 rounded-xl bg-sky-500/10 border border-sky-400/20 text-xs text-sky-300 flex items-center justify-between mb-3">
+            <span>Ca đang chọn: <b id="currentSessionLabel">Sáng Thứ 4</b></span>
+            <span class="text-[11px] text-slate-400">Chạm 1 lần để chọn trạng thái</span>
+          </div>
+
+          <div class="max-h-[460px] overflow-y-auto space-y-2 pr-1" id="attendanceStudentList"></div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+          <div>
+            <h2 class="text-sm sm:text-base font-black text-white flex items-center gap-2 mb-3">
+              <i class="fa-solid fa-ranking-star text-amber-400"></i>
+              Bảng Điểm Thi Đua 4 Tổ
+            </h2>
+            <div class="space-y-3" id="teamLeaderboard"></div>
+          </div>
+          <div class="mt-4 p-3 rounded-xl bg-white/5 border border-white/10 text-[11px] text-slate-400 space-y-1">
+            <p><i class="fa-solid fa-scale-balanced mr-1 text-sky-400"></i>Quy chế 01/QCTĐ-10A12 chấm chéo.</p>
+            <p>• Tổ 1 chấm Tổ 2 • Tổ 2 chấm Tổ 3</p>
+            <p>• Tổ 3 chấm Tổ 4 • Tổ 4 chấm Tổ 1</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 3. TAB SƠ ĐỒ LỚP HỌC 4 DÃY ==================== -->
+    <section id="tab-so-do-lop" class="tab-pane hidden space-y-3 sm:space-y-4">
+      <div class="glass-card rounded-2xl p-4 sm:p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+          <div>
+            <h2 class="text-sm sm:text-base font-black text-white flex items-center gap-2">
+              <i class="fa-solid fa-table-cells-large text-sky-400"></i>
+              Sơ Đồ Chỗ Ngồi Lớp 10A12 (4 Dãy - 6 Hàng)
+            </h2>
+            <p class="text-[11px] text-slate-400">Bấm chọn 2 ghế liên tiếp trên điện thoại để hoán đổi chỗ ngồi</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="togglePerspective()" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-slate-300 transition flex items-center gap-1.5">
+              <i class="fa-solid fa-repeat text-sky-400"></i>
+              <span id="perspectiveLabelBadge">Góc nhìn: Học sinh</span>
+            </button>
+            <button onclick="syncSeatingToSheets()" id="btnSaveSeating" class="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold hover:bg-emerald-500/30 transition flex items-center gap-1.5">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+              <span>Lưu Sơ Đồ</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4 p-3 sm:p-5 rounded-2xl bg-black/30 border border-white/5 flex flex-col items-center overflow-x-auto">
+          <div id="podiumArea" class="w-full max-w-2xl flex items-center justify-center gap-4 py-2 mb-4 bg-sky-500/10 border border-sky-400/20 rounded-xl text-xs font-black text-sky-300">
+            <i class="fa-solid fa-chalkboard-user text-base"></i> BẢNG ĐEN & BÀN GIÁO VIÊN
+          </div>
+          <div class="w-full max-w-4xl space-y-2.5 min-w-[620px]" id="seatingGridRows"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 4. TAB LAO ĐỘNG & TRỰC NHẬT ==================== -->
+    <section id="tab-lao-dong" class="tab-pane hidden space-y-3 sm:space-y-4">
+      <div class="glass-card rounded-2xl p-4 sm:p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-white/10">
+          <div>
+            <h2 class="text-sm sm:text-base font-black text-white flex items-center gap-2">
+              <i class="fa-solid fa-broom text-amber-400"></i>
+              Quản Lý Trực Nhật & Lao Động Phạt
+            </h2>
+            <p class="text-[11px] text-slate-400">Phụ trách: <b>Ban Cán sự Lao động</b> • Kiểm tra 7 ca & nghiệm thu phạt</p>
+          </div>
+          <button onclick="openDeskSanitationModal()" id="btnOpenSanitationModal" class="px-3 py-1.5 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-400/30 text-xs font-bold hover:bg-rose-500/30 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-trash-can"></i> Bắt lỗi vệ sinh / rác hộc bàn
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+            <h3 class="text-xs font-bold text-sky-300 uppercase mb-3"><i class="fa-solid fa-calendar-day mr-1.5"></i>Tổ Trực Nhật Ca Học Hiện Tại</h3>
+            <div class="space-y-2 text-xs">
+              <div class="flex items-center justify-between py-1.5 border-b border-white/5">
+                <span class="text-slate-400">Ca học:</span>
+                <span class="font-black text-white" id="laborCurrentSession">Sáng Thứ 4</span>
+              </div>
+              <div class="flex items-center justify-between py-1.5 border-b border-white/5">
+                <span class="text-slate-400">Tổ trực chính:</span>
+                <span class="font-black text-amber-300" id="laborCurrentTeam">Tổ 1</span>
+              </div>
+              <div class="flex items-center justify-between py-1.5 border-b border-white/5">
+                <span class="text-slate-400">Nhiệm vụ:</span>
+                <span class="text-slate-200">Quét lớp, giặt khăn bảng, đổ rác</span>
+              </div>
+            </div>
+            <div class="mt-4 flex items-center gap-2" id="laborActionGroup">
+              <button onclick="gradeLaborSession('DAT')" class="flex-1 py-2 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold hover:bg-emerald-500/30 transition">
+                <i class="fa-solid fa-check mr-1"></i> Trực Tốt / Đạt
+              </button>
+              <button onclick="gradeLaborSession('CHUA_DAT')" class="flex-1 py-2 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-400/30 text-xs font-bold hover:bg-rose-500/30 transition">
+                <i class="fa-solid fa-xmark mr-1"></i> Chưa Đạt (-20đ Tổ)
+              </button>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-white/5 border border-white/10 flex flex-col justify-between">
+            <div>
+              <h3 class="text-xs font-bold text-rose-300 uppercase mb-3"><i class="fa-solid fa-list-check mr-1.5"></i>Danh Sách Trực Nhật Phạt Tuần</h3>
+              <div class="space-y-2 max-h-52 overflow-y-auto pr-1" id="laborPunishmentList">
+                <p class="text-xs text-slate-400 italic">Không có học sinh nào bị phạt lao động tuần này.</p>
+              </div>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-3 pt-2 border-t border-white/5">
+              * Cán sự bấm "Đã hoàn thành" để xóa nợ; nếu trốn phạt bấm "Vắng phạt" sẽ tự nhân đôi ca.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 5. TAB SỔ ĐẦU BÀI ĐIỆN TỬ ==================== -->
+    <section id="tab-so-dau-bai" class="tab-pane hidden space-y-3 sm:space-y-4">
+      <div class="glass-card rounded-2xl p-4 sm:p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-white/10">
+          <div>
+            <h2 class="text-sm sm:text-base font-black text-white flex items-center gap-2">
+              <i class="fa-solid fa-book-bookmark text-indigo-400"></i>
+              Sổ Đầu Bài Điện Tử (5 Tiết Học)
+            </h2>
+            <p class="text-[11px] text-slate-400">Theo dõi nề nếp tiết dạy theo TKB • Xếp loại tiết học</p>
+          </div>
+          <button onclick="openClassSessionLogModal()" id="btnOpenSessionLogModal" class="px-3 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 text-xs font-bold hover:bg-indigo-500/30 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-plus"></i> Ghi sổ đầu bài tiết mới
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mt-4" id="periodCardGrid"></div>
+      </div>
+    </section>
+
+    <!-- ==================== 6. TAB QUỸ LỚP ==================== -->
+    <section id="tab-quy-lop" class="tab-pane hidden space-y-3 sm:space-y-4">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="glass-card p-4 rounded-2xl border-l-4 border-emerald-500">
+          <p class="text-[11px] font-bold text-slate-400 uppercase">TỔNG THU KỲ ĐANG CHỌN</p>
+          <p class="text-2xl font-black text-emerald-400 mt-1" id="fundIncomeDisplay">0 đ</p>
+          <span class="text-[10px] text-slate-400" id="fundPaidRatio">Đã thu: 0/45 HS</span>
+        </div>
+        <div class="glass-card p-4 rounded-2xl border-l-4 border-rose-500">
+          <p class="text-[11px] font-bold text-slate-400 uppercase">TỔNG CHI ĐÃ DUYỆT</p>
+          <p class="text-2xl font-black text-rose-400 mt-1" id="fundExpenseDisplay">0 đ</p>
+          <span class="text-[10px] text-slate-400" id="fundExpenseCount">0 phiếu chi</span>
+        </div>
+        <div class="glass-card p-4 rounded-2xl border-l-4 border-indigo-500">
+          <p class="text-[11px] font-bold text-slate-400 uppercase">TỒN QUỸ KHẢ DỤNG</p>
+          <p class="text-2xl font-black text-indigo-300 mt-1" id="fundBalanceDisplay">0 đ</p>
+          <span class="text-[10px] text-emerald-400 font-semibold">Khớp két thực tế</span>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-4 sm:p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-xs font-bold text-slate-300">Đợt thu:</span>
+            <select id="campaignSelect" onchange="switchFundCampaign(this.value)" class="bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded-xl px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-sky-400">
+              <option value="KY1_100K">Quỹ Lớp Học Kỳ 1 (100k)</option>
+            </select>
+            <button onclick="openNewCampaignModal()" id="btnOpenNewCampaign" class="px-2.5 py-1.5 rounded-xl bg-sky-500/20 text-sky-300 border border-sky-400/30 text-xs font-bold hover:bg-sky-500/30">
+              <i class="fa-solid fa-plus mr-1"></i> Mở đợt mới
+            </button>
+          </div>
+          <div class="flex items-center gap-2" id="fundActionGroup">
+            <button onclick="openAddExpenseModal()" id="btnOpenExpenseModal" class="px-3 py-1.5 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-400/30 text-xs font-bold hover:bg-rose-500/30 flex items-center gap-1.5">
+              <i class="fa-solid fa-receipt"></i> + Chi Tiêu
+            </button>
+            <button onclick="saveCurrentFundState()" id="btnSaveFundState" class="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold hover:bg-emerald-500/30 flex items-center gap-1.5">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Lưu Đồng Bộ
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <div class="flex items-center justify-between mb-2.5 flex-wrap gap-2">
+            <span class="text-[11px] text-slate-400">Tích chọn = Đã nộp đủ định mức</span>
+            <div class="flex items-center gap-1" id="fundTeamFilters">
+              <button onclick="filterFundTeam('ALL')" class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-sky-500 text-white">Tất cả</button>
+              <button onclick="filterFundTeam('Tổ 1')" class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-white/5 text-slate-300">T1</button>
+              <button onclick="filterFundTeam('Tổ 2')" class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-white/5 text-slate-300">T2</button>
+              <button onclick="filterFundTeam('Tổ 3')" class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-white/5 text-slate-300">T3</button>
+              <button onclick="filterFundTeam('Tổ 4')" class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-white/5 text-slate-300">T4</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-[460px] overflow-y-auto pr-1" id="fundStudentGrid"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 7. TAB DANH SÁCH LỚP ==================== -->
+    <section id="tab-danh-sach" class="tab-pane hidden space-y-3 sm:space-y-4">
+      <div class="glass-card rounded-2xl p-4 sm:p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+          <div>
+            <h2 class="text-sm sm:text-base font-black text-white flex items-center gap-2">
+              <i class="fa-solid fa-address-book text-sky-400"></i>
+              Hồ Sơ 45 Học Sinh 10A12
+            </h2>
+            <p class="text-[11px] text-slate-400">Lý lịch gia đình • Số thẻ CCCD • Tình trạng Đoàn thể</p>
+          </div>
+          <div class="flex items-center gap-2" id="studentManagementActionGroup">
+            <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleExcelUpload(event)">
+            <button onclick="document.getElementById('excelFileInput').click()" id="btnImportExcel" class="px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-400/30 text-xs font-bold hover:bg-amber-500/30 transition flex items-center gap-1.5" title="Nhập danh sách học sinh từ file Excel vnEdu hoặc SMAS">
+              <i class="fa-solid fa-file-import"></i>
+              <span>Nhập Excel</span>
+            </button>
+            <button onclick="exportStudentProfilesExcel()" class="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold hover:bg-emerald-500/30 transition flex items-center gap-1.5">
+              <i class="fa-solid fa-file-excel"></i>
+              <span>Xuất Excel</span>
+            </button>
+            <button onclick="openAddNewStudentModal()" id="btnAddNewStudent" class="px-3 py-1.5 rounded-xl bg-sky-500/20 text-sky-300 border border-sky-400/30 text-xs font-bold hover:bg-sky-500/30 transition flex items-center gap-1.5">
+              <i class="fa-solid fa-user-plus"></i>
+              <span>+ Thêm HS</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-3 relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+          <input 
+            type="text" 
+            id="searchStudentInput"
+            name="filter_student_query_no_autofill_clean"
+            autocomplete="new-password" 
+            autocorrect="off" 
+            autocapitalize="off" 
+            spellcheck="false"
+            readonly
+            onfocus="this.removeAttribute('readonly');"
+            oninput="handleSearchStudent(this.value)"
+            placeholder="Tìm theo tên học sinh, số CCCD hoặc tổ sinh hoạt..." 
+            class="w-full pl-9 pr-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-400 font-medium"
+          >
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4" id="studentCardsGrid"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== CÁC MODAL NGHIỆP VỤ ==================== -->
+  
+  <!-- MODAL BỔ SUNG GIẤY PHÉP -->
+  <div id="leaveSupplementModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="glass-card max-w-md w-full p-5 rounded-2xl border border-white/20 space-y-3">
+      <h3 class="text-sm font-black text-white flex items-center gap-2">
+        <i class="fa-solid fa-file-circle-check text-emerald-400"></i> Duyệt Bổ Sung Giấy Phép
+      </h3>
+      <p class="text-xs text-slate-300" id="supplementStudentInfo">Học sinh: Đang chọn...</p>
+      <div>
+        <label class="text-[11px] text-slate-400 block mb-1">Lý do bổ sung giấy phép:</label>
+        <input type="text" id="supplementReasonInput" placeholder="VD: Phụ huynh gọi điện báo ốm" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white">
+      </div>
+      <div class="flex items-center gap-2 pt-2">
+        <button onclick="closeLeaveSupplementModal()" class="flex-1 py-2 rounded-xl bg-white/5 text-xs font-bold text-slate-400">Hủy</button>
+        <button onclick="submitLeaveSupplement()" class="flex-1 py-2 rounded-xl bg-emerald-500 text-xs font-bold text-white shadow-lg shadow-emerald-500/30">Duyệt Phép & Hoàn Điểm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CHẤM CHÉO NỀ NẾP -->
+  <div id="recordViolationModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="glass-card max-w-md w-full p-5 rounded-2xl border border-white/20 space-y-3">
+      <div class="flex items-center justify-between border-b border-white/10 pb-2.5">
+        <h3 class="text-sm font-black text-white flex items-center gap-2">
+          <i class="fa-solid fa-triangle-exclamation text-amber-400"></i> Ghi Nhận Thi Đua Nề Nếp
+        </h3>
+        <button onclick="closeRecordViolationModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-2 text-xs">
+        <div>
+          <label class="text-slate-400 block mb-1">Chọn học sinh:</label>
+          <select id="violationStudentSelect" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white"></select>
+        </div>
+        <div>
+          <label class="text-slate-400 block mb-1">Hành vi vi phạm (Quy chế 01):</label>
+          <select id="violationCriteriaSelect" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+            <option value="P01|-10">P01: Không thuộc bài / không làm bài tập (-10đ)</option>
+            <option value="P02|-5">P02: Quên mang sách vở, dụng cụ học tập (-5đ)</option>
+            <option value="P03|-10">P03: Nói chuyện riêng trong giờ (-10đ)</option>
+            <option value="P04|-10">P04: Ngủ gật trong giờ học (-10đ)</option>
+            <option value="P05|-20">P05: Sử dụng điện thoại không phép (-20đ)</option>
+            <option value="P11|-10">P11: Sai đồng phục, thiếu phù hiệu (-10đ)</option>
+            <option value="P22|-10">P22: Ăn quà vặt trong lớp (-10đ)</option>
+            <option value="P23|-20">P23: Xả rác bừa bãi, rác hộc bàn (-20đ)</option>
+            <option value="C01|10">C01: Điểm 10 miệng / Phát biểu xuất sắc (+10đ)</option>
+            <option value="C04|5">C04: Hỗ trợ nề nếp 15p đầu giờ (+5đ)</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-slate-400 block mb-1">Ghi chú:</label>
+          <input type="text" id="violationNoteInput" placeholder="VD: Tiết 3 môn Tiếng Anh" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+        </div>
+      </div>
+      <div class="flex items-center gap-2 pt-2">
+        <button onclick="closeRecordViolationModal()" class="flex-1 py-2 rounded-xl bg-white/5 text-xs font-bold text-slate-400">Hủy</button>
+        <button onclick="submitRecordViolation()" class="flex-1 py-2 rounded-xl bg-sky-500 text-xs font-bold text-white shadow-lg shadow-sky-500/30">Lưu Vi Phạm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL BẮT LỖI VỆ SINH BÀN HỌC -->
+  <div id="deskSanitationModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="glass-card max-w-sm w-full p-5 rounded-2xl border border-white/20 space-y-3">
+      <div class="flex items-center justify-between border-b border-white/10 pb-2">
+        <h3 class="text-sm font-black text-rose-300 flex items-center gap-2">
+          <i class="fa-solid fa-trash-can"></i> Lỗi Vệ Sinh Bàn Học
+        </h3>
+        <button onclick="closeDeskSanitationModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-2 text-xs">
+        <div>
+          <label class="text-slate-400 block mb-1">Vị trí bàn vi phạm:</label>
+          <select id="deskSanitationSelect" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+            <option value="Dãy 1 - Bàn 1">Dãy 1 - Bàn 1</option>
+            <option value="Dãy 1 - Bàn 2">Dãy 1 - Bàn 2</option>
+            <option value="Dãy 2 - Bàn 1">Dãy 2 - Bàn 1</option>
+            <option value="Dãy 3 - Bàn 1">Dãy 3 - Bàn 1</option>
+            <option value="Dãy 4 - Bàn 1">Dãy 4 - Bàn 1</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-slate-400 block mb-1">Loại lỗi:</label>
+          <select id="deskSanitationType" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+            <option value="Rác hộc bàn chưa dọn (-10đ)">Rác hộc bàn chưa dọn (-10đ)</option>
+            <option value="Viết, vẽ bậy lên mặt bàn (-20đ)">Viết, vẽ bậy lên mặt bàn (-20đ)</option>
+            <option value="Kê bàn lệch hàng, không xếp ghế (-10đ)">Kê bàn lệch hàng, không xếp ghế (-10đ)</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 pt-2">
+        <button onclick="closeDeskSanitationModal()" class="flex-1 py-2 rounded-xl bg-white/5 text-xs font-bold text-slate-400">Hủy</button>
+        <button onclick="submitDeskSanitation()" class="flex-1 py-2 rounded-xl bg-rose-500 text-xs font-bold text-white shadow-lg shadow-rose-500/30">Ghi Lỗi Vệ Sinh</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL GHI SỔ ĐẦU BÀI -->
+  <div id="sessionLogModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="glass-card max-w-md w-full p-5 rounded-2xl border border-white/20 space-y-3">
+      <div class="flex items-center justify-between border-b border-white/10 pb-2">
+        <h3 class="text-sm font-black text-indigo-300 flex items-center gap-2">
+          <i class="fa-solid fa-book-bookmark"></i> Ghi Sổ Đầu Bài Tiết Học
+        </h3>
+        <button onclick="closeClassSessionLogModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-2 text-xs">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-slate-400 block mb-1">Tiết:</label>
+            <select id="logPeriodSelect" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+              <option value="Tiết 1">Tiết 1</option>
+              <option value="Tiết 2">Tiết 2</option>
+              <option value="Tiết 3">Tiết 3</option>
+              <option value="Tiết 4">Tiết 4</option>
+              <option value="Tiết 5">Tiết 5</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-slate-400 block mb-1">Môn học:</label>
+            <input type="text" id="logSubjectInput" placeholder="Toán, Văn, Anh..." class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-slate-400 block mb-1">Giáo viên:</label>
+            <input type="text" id="logTeacherInput" placeholder="Họ tên GVBM" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+          </div>
+          <div>
+            <label class="text-slate-400 block mb-1">Xếp loại:</label>
+            <select id="logRatingSelect" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+              <option value="A">Loại A (Tiết Tốt)</option>
+              <option value="B">Loại B (Tiết Khá)</option>
+              <option value="C">Loại C (Trung bình)</option>
+              <option value="D">Loại D (Kém)</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="text-slate-400 block mb-1">Tên bài dạy:</label>
+          <input type="text" id="logTopicInput" placeholder="Tên bài học theo PPCT" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+        </div>
+        <div>
+          <label class="text-slate-400 block mb-1">Nhận xét:</label>
+          <input type="text" id="logNoteInput" placeholder="Lớp trật tự, chuẩn bị bài tốt..." class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+        </div>
+      </div>
+      <div class="flex items-center gap-2 pt-2">
+        <button onclick="closeClassSessionLogModal()" class="flex-1 py-2 rounded-xl bg-white/5 text-xs font-bold text-slate-400">Hủy</button>
+        <button onclick="submitClassSessionLog()" class="flex-1 py-2 rounded-xl bg-indigo-500 text-xs font-bold text-white shadow-lg shadow-indigo-500/30">Lưu Tiết Học</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL MỞ KỲ THU QUỸ MỚI -->
+  <div id="newCampaignModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="glass-card max-w-sm w-full p-5 rounded-2xl border border-white/20 space-y-3">
+      <div class="flex items-center justify-between border-b border-white/10 pb-2">
+        <h3 class="text-sm font-black text-white flex items-center gap-2">
+          <i class="fa-solid fa-plus text-sky-400"></i> Mở Đợt Thu Quỹ Mới
+        </h3>
+        <button onclick="closeNewCampaignModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-2 text-xs">
+        <div>
+          <label class="text-slate-400 block mb-1">Tên đợt thu:</label>
+          <input type="text" id="campaignTitleInput" placeholder="VD: Quỹ Hội Trại 26/3 & STEM" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+        </div>
+        <div>
+          <label class="text-slate-400 block mb-1">Định mức thu/học sinh (VNĐ):</label>
+          <input type="number" id="campaignTargetInput" placeholder="50000" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+        </div>
+      </div>
+      <div class="flex items-center gap-2 pt-2">
+        <button onclick="closeNewCampaignModal()" class="flex-1 py-2 rounded-xl bg-white/5 text-xs font-bold text-slate-400">Hủy</button>
+        <button onclick="submitNewCampaign()" class="flex-1 py-2 rounded-xl bg-sky-500 text-xs font-bold text-white shadow-lg shadow-sky-500/30">Khởi Tạo Đợt Thu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL LẬP PHIẾU CHI TIÊU QUỸ -->
+  <div id="addExpenseModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="glass-card max-w-sm w-full p-5 rounded-2xl border border-white/20 space-y-3">
+      <div class="flex items-center justify-between border-b border-white/10 pb-2">
+        <h3 class="text-sm font-black text-rose-300 flex items-center gap-2">
+          <i class="fa-solid fa-receipt"></i> Lập Phiếu Chi Quỹ Lớp
+        </h3>
+        <button onclick="closeAddExpenseModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-2 text-xs">
+        <div>
+          <label class="text-slate-400 block mb-1">Khoản mục chi:</label>
+          <select id="expenseCategorySelect" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+            <option value="Học tập & Giảng dạy">Học tập & Giảng dạy</option>
+            <option value="Vệ sinh & Cơ sở vật chất">Vệ sinh & Cơ sở vật chất</option>
+            <option value="Phong trào & Đoàn trường">Phong trào & Đoàn trường</option>
+            <option value="Khen thưởng & Động viên">Khen thưởng & Động viên</option>
+            <option value="Thăm hỏi tương trợ">Thăm hỏi tương trợ</option>
+            <option value="Chi khác">Chi khác</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-slate-400 block mb-1">Số tiền chi (VNĐ):</label>
+          <input type="number" id="expenseAmountInput" placeholder="Ví dụ: 120000" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono">
+        </div>
+        <div>
+          <label class="text-slate-400 block mb-1">Nội dung chi tiết:</label>
+          <input type="text" id="expenseNoteInput" placeholder="Mua nước lau sàn và chổi quét lớp" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+        </div>
+      </div>
+      <div class="flex items-center gap-2 pt-2">
+        <button onclick="closeAddExpenseModal()" class="flex-1 py-2 rounded-xl bg-white/5 text-xs font-bold text-slate-400">Hủy</button>
+        <button onclick="submitAddExpense()" class="flex-1 py-2 rounded-xl bg-rose-500 text-xs font-bold text-white shadow-lg shadow-rose-500/30">Xuất Quỹ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL HỒ SƠ CHI TIẾT HỌC SINH -->
+  <div id="studentDetailModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="glass-card max-w-2xl w-full p-4 sm:p-6 rounded-2xl border border-white/20 max-h-[92vh] overflow-y-auto space-y-4">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-id-card text-sky-400 text-base"></i>
+          <h3 class="text-sm sm:text-base font-black text-white" id="modalStudentTitle">Hồ Sơ Chi Tiết Học Sinh</h3>
+        </div>
+        <button onclick="closeStudentModal()" class="text-slate-400 hover:text-white p-1 text-base"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-4 text-xs" id="modalStudentForm"></div>
+      <div class="flex items-center gap-2 pt-3 border-t border-white/10" id="studentDetailModalActions">
+        <button onclick="closeStudentModal()" class="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-400">Đóng</button>
+        <button onclick="saveStudentProfileChanges()" id="btnSaveStudentChanges" class="flex-1 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-xs font-bold text-white shadow-lg shadow-sky-500/30">Lưu Thay Đổi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL THÊM HỌC SINH MỚI -->
+  <div id="addStudentModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="glass-card max-w-md w-full p-4 sm:p-5 rounded-2xl border border-white/20 max-h-[90vh] overflow-y-auto space-y-3">
+      <div class="flex items-center justify-between border-b border-white/10 pb-2">
+        <h3 class="text-sm font-black text-white flex items-center gap-2">
+          <i class="fa-solid fa-user-plus text-sky-400"></i> Tiếp Nhận Học Sinh Mới
+        </h3>
+        <button onclick="closeAddNewStudentModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-2 text-xs">
+        <div>
+          <label class="text-slate-400 block mb-1">Họ và tên học sinh:</label>
+          <input type="text" id="newStudentName" placeholder="Nguyễn Văn A" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-slate-400 block mb-1">Tổ sinh hoạt:</label>
+            <select id="newStudentTeam" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+              <option value="Tổ 1">Tổ 1</option>
+              <option value="Tổ 2">Tổ 2</option>
+              <option value="Tổ 3">Tổ 3</option>
+              <option value="Tổ 4">Tổ 4</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-slate-400 block mb-1">Chức vụ:</label>
+            <input type="text" id="newStudentRole" value="Thành viên" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+          </div>
+        </div>
+        <div>
+          <label class="text-slate-400 block mb-1">Số thẻ CCCD (12 số):</label>
+          <input type="text" id="newStudentCCCD" placeholder="052206xxxxxx" maxlength="12" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-slate-400 block mb-1">Họ tên Ba:</label>
+            <input type="text" id="newStudentFather" placeholder="Họ tên Ba" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+          </div>
+          <div>
+            <label class="text-slate-400 block mb-1">SĐT Ba:</label>
+            <input type="tel" id="newStudentFatherPhone" placeholder="09xxxxxxx" class="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white">
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 pt-2 border-t border-white/10">
+        <button onclick="closeAddNewStudentModal()" class="flex-1 py-2 rounded-xl bg-white/5 text-xs font-bold text-slate-400">Hủy</button>
+        <button onclick="submitAddNewStudent()" class="flex-1 py-2 rounded-xl bg-sky-500 text-xs font-bold text-white shadow-lg shadow-sky-500/30">Thêm Vào Lớp</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.warn('[PWA] ServiceWorker Warning:', err));
+      });
+    }
+  </script>
+</body>
+</html>
